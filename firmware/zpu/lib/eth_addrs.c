@@ -60,12 +60,18 @@ static void eth_addrs_init(void){
     if (eth_addrs_initialized) return;
     eth_addrs_initialized = true;
 
+#ifndef NO_EEPROM
     #define eth_addrs_init_x(addr, x){ \
         const bool ok = eeprom_read(USRP2_I2C_ADDR_MBOARD, addr, &current_eth_addrs.x, sizeof(current_eth_addrs.x)); \
         if (!ok || unprogrammed(&current_eth_addrs.x, sizeof(current_eth_addrs.x))){ \
             memcpy(&current_eth_addrs.x, &default_eth_addrs.x, sizeof(current_eth_addrs.x)); \
         } \
     }
+#else
+    #define eth_addrs_init_x(addr, x){ \
+        memcpy(&current_eth_addrs.x, &default_eth_addrs.x, sizeof(current_eth_addrs.x)); \
+    }
+#endif
 
     eth_addrs_init_x(USRP2_EE_MBOARD_MAC_ADDR, mac_addr);
     eth_addrs_init_x(USRP2_EE_MBOARD_IP_ADDR,  ip_addr);
@@ -95,7 +101,11 @@ const struct ip_addr *get_gateway(void){
 }
 
 bool set_ip_addr(const struct ip_addr *t){
+#ifdef NO_EEPROM
+    const bool ok = true;
+#else
     const bool ok = eeprom_write(USRP2_I2C_ADDR_MBOARD, USRP2_EE_MBOARD_IP_ADDR, t, sizeof(struct ip_addr));
+#endif
     if (ok) current_eth_addrs.ip_addr = *t;
     return ok;
 }
