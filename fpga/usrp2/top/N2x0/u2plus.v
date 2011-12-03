@@ -117,8 +117,9 @@ module u2plus
    output SEN_RX_ADC, output SCLK_RX_ADC, output MOSI_RX_ADC, input MISO_RX_ADC,
 
    // GigE PHY
+`ifndef ATLYS
    input CLK_TO_MAC,
-
+`endif // !`ifndef ATLYS
    output reg [7:0] GMII_TXD,
    output reg GMII_TX_EN,
    output reg GMII_TX_ER,
@@ -185,14 +186,16 @@ module u2plus
    );
 
    wire  CLK_TO_MAC_int, CLK_TO_MAC_int2;
+`ifndef ATLYS
    IBUFG phyclk (.O(CLK_TO_MAC_int), .I(CLK_TO_MAC));
    BUFG phyclk2 (.O(CLK_TO_MAC_int2), .I(CLK_TO_MAC_int));
+`endif // !`ifndef ATLYS
       
    // FPGA-specific pins connections
    wire 	clk_fpga, dsp_clk, clk_div, dcm_out, wb_clk, clock_ready;
 
-   IBUFGDS clk_fpga_pin (.O(clk_fpga),.I(CLK_FPGA_P),.IB(CLK_FPGA_N));
-   defparam 	clk_fpga_pin.IOSTANDARD = "LVPECL_25";
+//   IBUFGDS clk_fpga_pin (.O(clk_fpga),.I(CLK_FPGA_P),.IB(CLK_FPGA_N));
+//   defparam 	clk_fpga_pin.IOSTANDARD = "LVPECL_25";
    
    wire 	exp_time_in;
    IBUFDS exp_time_in_pin (.O(exp_time_in),.I(exp_time_in_p),.IB(exp_time_in_n));
@@ -258,6 +261,7 @@ module u2plus
 `endif // !`ifndef LMS602D_FRONTEND
    
    // Handle Clocks
+`ifndef ATLYS
    DCM DCM_INST (.CLKFB(dsp_clk), 
                  .CLKIN(clk_fpga), 
                  .DSSEN(0), 
@@ -294,6 +298,27 @@ module u2plus
 
    BUFG dspclk_BUFG (.I(dcm_out), .O(dsp_clk));
    BUFG wbclk_BUFG (.I(clk_div), .O(wb_clk));
+`else
+   pll_clk pll_clk_instance
+   (// Clock in ports
+    .clk_in(CLK_FPGA_P),      // IN
+    // Clock out ports
+    .wb_clk(wb_clk),     // OUT 50 MHz
+    .clk_to_mac(CLK_TO_MAC_int2),     // OUT 125 MHz
+    .dsp_clk(dsp_clk),     // OUT 100 MHz
+    .clk270_100(clk270_100),     // OUT 100 MHz
+    .clk_fpga(clk_fpga),     // OUT 100 MHz
+    // Status and control signals
+    .LOCKED_OUT(LOCKED_OUT));      // OUT
+
+   pll_rx pll_rx_instance
+   (// Clock in ports
+    .GMII_RX_CLK(GMII_RX_CLK),      // IN
+    // Clock out ports
+    .clk_rx(clk_rx),     // OUT
+    .clk_rx_180(clk_rx_180));    // OUT
+
+`endif // !`ifndef ATLYS
 
    // Create clock for external SRAM thats -90degree phase to DSPCLK (i.e) 2nS earlier at 100MHz.
    BUFG  clk270_100_buf_i1 (.I(clk270_100), 
@@ -353,6 +378,125 @@ module u2plus
       .R(0),      // Synchronous reset input
       .S(0)       // Synchronous preset input
       );
+
+`ifdef ATLYS
+   wire [7:0] GMII_RXD_buf_n ,GMII_RXD_buf;
+   wire GMII_RX_DV_buf, GMII_RX_DV_buf_n, GMII_RX_ER_buf, GMII_RX_ER_buf_n;
+
+    IDDR2 erx_dv_ifd
+    (
+      .Q0( GMII_RX_DV_buf), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RX_DV_buf_n), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RX_DV),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erx_er_ifd
+    (
+      .Q0 ( GMII_RX_ER_buf), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RX_ER_buf_n), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RX_ER),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+    );
+
+   IDDR2 erxd_0_ifd
+    (
+      .Q0 ( GMII_RXD_buf[0]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[0]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[0]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erxd_1_ifd
+    (
+      .Q0 ( GMII_RXD_buf[1]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[1]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[1]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+
+   IDDR2 erxd_2_ifd
+    (
+      .Q0 ( GMII_RXD_buf[2]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[2]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[2]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erxd_3_ifd
+   (
+      .Q0 ( GMII_RXD_buf[3]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[3]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[3]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erxd_4_ifd
+    (
+      .Q0 ( GMII_RXD_buf[4]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[4]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[4]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erxd_5_ifd
+   (
+      .Q0 ( GMII_RXD_buf[5]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[5]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[5]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erxd_6_ifd
+    (
+      .Q0 ( GMII_RXD_buf[6]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[6]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[6]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+   IDDR2 erxd_7_ifd
+    (
+      .Q0 ( GMII_RXD_buf[7]), // 1-bit output captured with C0 clock
+      .Q1 ( GMII_RXD_buf_n[7]), // 1-bit output captured with C1 clock
+      .C0 ( clk_rx), // 1-bit clock input
+      .C1 ( clk_rx_180), // 1-bit clock input
+      .CE ( 1),  // 1-bit clock enable input
+      .D ( GMII_RXD[7]),   // 1-bit data input
+      .R ( 0),      // Synchronous reset input
+      .S ( 0)      // Synchronous preset input
+      );
+
+`endif // !`ifndef ATLYS
    
 `ifndef NO_SERDES
    wire ser_tklsb_unreg, ser_tkmsb_unreg;
@@ -473,10 +617,17 @@ module u2plus
 		     .GMII_TX_ER	(GMII_TX_ER_unreg),
 		     .GMII_GTX_CLK	(GMII_GTX_CLK_int),
 		     .GMII_TX_CLK	(GMII_TX_CLK),
+`ifndef ATLYS
 		     .GMII_RXD		(GMII_RXD[7:0]),
 		     .GMII_RX_CLK	(GMII_RX_CLK),
 		     .GMII_RX_DV	(GMII_RX_DV),
 		     .GMII_RX_ER	(GMII_RX_ER),
+`else
+		     .GMII_RXD		(GMII_RXD_buf[7:0]),
+		     .GMII_RX_CLK	(clk_rx),
+		     .GMII_RX_DV	(GMII_RX_DV_buf),
+		     .GMII_RX_ER	(GMII_RX_ER_buf),
+`endif // !`ifndef ATLYS
 		     .MDIO		(MDIO),
 		     .MDC		(MDC),
 		     .PHY_INTn		(PHY_INTn),
@@ -494,6 +645,19 @@ module u2plus
 		     .ser_r		(ser_r_int[15:0]),
 		     .ser_rklsb		(ser_rklsb_int),
 		     .ser_rkmsb		(ser_rkmsb_int),
+`else
+		     .ser_enable	(),
+		     .ser_prbsen	(),
+		     .ser_loopen	(),
+		     .ser_rx_en		(),
+		     .ser_tx_clk	(),
+		     .ser_t		(),
+		     .ser_tklsb		(),
+		     .ser_tkmsb		(),
+		     .ser_rx_clk	(),
+		     .ser_r		(),
+		     .ser_rklsb		(),
+		     .ser_rkmsb		(),
 `endif // !`ifndef NO_SERDES
 `ifndef LMS602D_FRONTEND
 		     .adc_a		(adc_a[13:0]),
@@ -571,12 +735,12 @@ module u2plus
 		     .spiflash_mosi     (flash_mosi)
 		     );
 
-`ifndef NO_EXT_RAM
+`ifndef NO_EXT_FIFO
    // Drive low so that RAM does not sleep.
    assign RAM_ZZ = 0;
    // Byte Writes are qualified by the global write enable
    // Always do 36bit operations to extram.
    assign RAM_BWn = 4'b0000;
-`endif // !`ifndef NO_EXT_RAM
+`endif // !`ifndef NO_EXT_FIFO
    
 endmodule // u2plus
