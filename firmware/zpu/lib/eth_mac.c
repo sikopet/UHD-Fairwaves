@@ -23,7 +23,11 @@
 #include "mdelay.h"
 #include "stdio.h"
 
+#ifdef MARVELL_PHY
+#define PHY_ADDR 7 // Address of Marvell phy at Atlys board
+#else
 #define PHY_ADDR 1
+#endif //MARVELL_PHY
 
 void
 eth_mac_set_addr(const eth_mac_addr_t *src)

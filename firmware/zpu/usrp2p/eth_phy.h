@@ -38,11 +38,19 @@
 #define PHY_1000T_STATUS 0x0A /* 1000Base-T Status Reg */
 #define PHY_EXT_STATUS   0x0F /* Extended Status Reg */
 
+#ifdef MARVELL_PHY
+/* PHY 1000 MII Register additions in 88E1111 */
+#define PHY_INT_MASK     18
+#define PHY_INT_STATUS   19
+#define PHY_PHY_STATUS   17
+#define PHY_LED2         31
+#else
 /* PHY 1000 MII Register additions in ET1011C */
 #define PHY_INT_MASK     24
 #define PHY_INT_STATUS   25
 #define PHY_PHY_STATUS   26
 #define PHY_LED2         28
+#endif //MARVELL_PHY
 
 /* Bit definitions for some of the registers above */
 
@@ -178,6 +186,24 @@
                                       /* (0=enable, 1=disable) */
 
 /* PHY Status Register (PHY_PHY_STATUS) */
+#ifdef MARVELL_PHY
+#define PHYSTAT_ASYMMETRIC   (1 << 0)
+#define PHYSTAT_PAUSE        (1 << 1)
+#define PHYSTAT_AUTONEG_EN   (1 << 2)
+#define PHYSTAT_COLLISION    (1 << 3)
+#define PHYSTAT_RXSTAT       (1 << 4)
+#define PHYSTAT_TXSTAT       (1 << 5)
+#define PHYSTAT_LINK         (1 << 10)
+#define PHYSTAT_DUPLEX       (1 << 7)
+#define PHYSTAT_SPEED_MASK   ((1 << 14) | (1 << 15))
+#define PHYSTAT_SPEED_1000   (1 << 15)
+#define PHYSTAT_SPEED_100    (1 << 14)
+#define PHYSTAT_SPEED_10     0
+#define PHYSTAT_POLARITY     (1 << 10)
+#define PHYSTAT_MDIX         (1 << 11)
+#define PHYSTAT_AUTONEG_STAT (1 << 12)
+#define PHYSTAT_STANDBY      (1 << 13)
+#else
 #define PHYSTAT_ASYMMETRIC   (1 << 0)
 #define PHYSTAT_PAUSE        (1 << 1)
 #define PHYSTAT_AUTONEG_EN   (1 << 2)
@@ -194,8 +220,10 @@
 #define PHYSTAT_MDIX         (1 << 11)
 #define PHYSTAT_AUTONEG_STAT (1 << 12)
 #define PHYSTAT_STANDBY      (1 << 13)
+#endif //MARVELL_PHY
 
 /* Interrupt status, mask and clear regs (PHY_INT_{STATUS,MASK,CLEAR}) */
+#ifndef MARVELL_PHY
 #define PHY_INT_ENABLE         (1 << 0)
 #define PHY_INT_DOWNSHIFT      (1 << 1)
 #define PHY_INT_LINK_STATUS_CHANGE  (1 << 2)
@@ -207,6 +235,19 @@
 #define PHY_INT_AUTONEG_STATUS_CHANGE (1 << 8)
 #define PHY_INT_MDIO_SYNC_LOST (1 << 9)
 #define PHY_INT_TDR_IP_PHONE   (1 << 10)
+#else
+#define PHY_INT_ENABLE         (1 << 0)
+#define PHY_INT_DOWNSHIFT      (1 << 5) 
+#define PHY_INT_LINK_STATUS_CHANGE  (1 << 10)
+#define PHY_INT_RX_STATUS_CHANGE (1 << 12)
+#define PHY_INT_FIFO_ERROR     (1 << 7)
+// #define PHY_INT_ERR_CTR_FULL   (1 << 5)
+//#define PHY_INT_NEXT_PAGE_RX   (1 << 12)
+// #define PHY_INT_CRC_ERROR      (1 << 7)
+#define PHY_INT_AUTONEG_STATUS_CHANGE (1 << 11)
+// #define PHY_INT_MDIO_SYNC_LOST (1 << 9)
+// #define PHY_INT_TDR_IP_PHONE   (1 << 10)
+#endif //MARVELL_PHY
 
 /* PHY LED status register 2 (used for controlling link LED for activity light) */
 #define PHY_LED_TXRX_LSB           12
