@@ -656,6 +656,7 @@ module u2plus_core
       .rx_data_o(wr1_dat), .rx_src_rdy_o(wr1_ready_i), .rx_dst_rdy_i(wr1_ready_o),
       .debug() );
 
+`ifndef ATLYS
    // /////////////////////////////////////////////////////////////////////////
    // DSP RX 1
    wire [31:0] 	 sample_rx1;
@@ -687,6 +688,7 @@ module u2plus_core
       .sample(sample_rx1), .run(run_rx1), .strobe(strobe_rx1),
       .rx_data_o(wr3_dat), .rx_src_rdy_o(wr3_ready_i), .rx_dst_rdy_i(wr3_ready_o),
       .debug() );
+`endif // !`ifndef ATLYS
 
    // ///////////////////////////////////////////////////////////////////////////////////
    // DSP TX
