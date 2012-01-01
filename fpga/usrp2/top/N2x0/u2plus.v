@@ -194,8 +194,10 @@ module u2plus
    // FPGA-specific pins connections
    wire 	clk_fpga, dsp_clk, clk_div, dcm_out, wb_clk, clock_ready;
 
-//   IBUFGDS clk_fpga_pin (.O(clk_fpga),.I(CLK_FPGA_P),.IB(CLK_FPGA_N));
-//   defparam 	clk_fpga_pin.IOSTANDARD = "LVPECL_25";
+`ifndef ATLYS
+   IBUFGDS clk_fpga_pin (.O(clk_fpga),.I(CLK_FPGA_P),.IB(CLK_FPGA_N));
+   defparam 	clk_fpga_pin.IOSTANDARD = "LVPECL_25";
+`endif // !`ifndef ATLYS
    
    wire 	exp_time_in;
    IBUFDS exp_time_in_pin (.O(exp_time_in),.I(exp_time_in_p),.IB(exp_time_in_n));
