@@ -350,6 +350,7 @@ public:
         case 0x0A01: return USRP_N210;
         case 0x0A10: return USRP_N200_R4;
         case 0x0A11: return USRP_N210_R4;
+        case 0xFA00: return UMTRX_REV0;
         }
         return USRP_NXXX; //unknown type
     }
@@ -362,6 +363,7 @@ public:
         case USRP_N210: return "N210";
         case USRP_N200_R4: return "N200r4";
         case USRP_N210_R4: return "N210r4";
+        case UMTRX_REV0: return "UMTRX-REV0";
         case USRP_NXXX: return "N???";
         }
         UHD_THROW_INVALID_CODE_PATH();
