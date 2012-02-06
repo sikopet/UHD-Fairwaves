@@ -47,13 +47,13 @@ swap8(unsigned char x)
   return r;
 }
 
-void
+static inline void
 wr_icap(uint8_t x)
 {
     icap_regs->icap = swap8(x);
 }
 
-uint8_t
+static inline uint8_t
 rd_icap(void)
 {
     return swap8(icap_regs->icap);

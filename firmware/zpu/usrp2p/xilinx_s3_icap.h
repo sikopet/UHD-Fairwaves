@@ -21,12 +21,6 @@
 
 #include <stdint.h>
 
-
-void wr_icap(uint8_t x);
-uint8_t rd_icap(void);
-
-//int icap_read_config_reg(int regno);
-
 /*
  * Attempt to reload the fpga from \p flash_address.
  * Shouldn't return, but might.
