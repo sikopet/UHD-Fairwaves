@@ -71,7 +71,7 @@ icap_reload_fpga(uint32_t flash_address)
     t.i = flash_address;
 
     //note! t.c[0] MUST contain the byte-wide read command for the flash device used.
-    //for the 25P64, and most other flash devices, this is 0x03.
+    //for the 25P64, and most other flash devices, this is 0x0b.
     t.c[0] = FAST_READ_CMD;
 
     //TODO: look up the watchdog timer, ensure it won't fire too soon
