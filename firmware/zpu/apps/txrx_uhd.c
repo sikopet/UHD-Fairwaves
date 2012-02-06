@@ -17,6 +17,7 @@
 
 //peripheral headers
 #include "u2_init.h"
+#include "umtrx_init.h"
 #include "spi.h"
 #include "i2c.h"
 #include "hal_io.h"
@@ -342,6 +343,10 @@ main(void)
   do_the_bootload_thing();
   //if we get here we've fallen through to safe firmware
   eth_addrs_set_default();
+#endif
+
+#ifdef UMTRX
+  umtrx_init();
 #endif
 
   print_mac_addr(ethernet_mac_addr()); newline();
