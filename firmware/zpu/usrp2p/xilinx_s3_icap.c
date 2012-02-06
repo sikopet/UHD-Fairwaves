@@ -63,7 +63,6 @@ rd_icap(void)
 void
 icap_reload_fpga(uint32_t flash_address)
 {
-/*
     union {
         uint32_t i;
         uint8_t c[4];
@@ -97,5 +96,4 @@ icap_reload_fpga(uint32_t flash_address)
     wr_icap(0x00); //Type 1 NOP
     wr_icap(0x20);
     wr_icap(0x00);
-*/
 }
