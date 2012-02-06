@@ -1,6 +1,7 @@
 /* -*- c -*- */
 /*
  * Copyright 2009-2011 Ettus Research LLC
+ * Copyright 2012 Alexander Chemeris <Alexander.Chemeris@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-/* Changes required to work for the Spartan-3A series:
- * The ICAP interface on the 3A is 8 bits wide, instead of 32.
- * Everything is Xilinx standard LSBit-first.
- * The operations are all different.
- * Commands are 16 bits long, presented to the ICAP interface 8 bits at a time.
-*/
 
 #include <xilinx_s6_icap.h>
 #include <memory_map.h>
@@ -53,19 +47,19 @@ swap16(uint16_t x)
   return (uint16_t)swap8(x&0xFF) | ((uint16_t)swap8((x>>8)&0xFF))<<8;
 }
 
-void
+static inline void
 wr_icap(uint16_t x)
 {
     icap_regs->icap = swap16(x);
 }
 
-uint16_t
+static inline uint16_t
 rd_icap(void)
 {
     return swap16(icap_regs->icap);
 }
 
-uint16_t icap_read_stat()
+uint16_t icap_s6_read_stat()
 {
     uint16_t stat;
 
@@ -90,7 +84,7 @@ uint16_t icap_read_stat()
 }
 
 void
-icap_reload_fpga(uint32_t flash_address)
+icap_s6_reload_fpga(uint32_t flash_address, uint32_t fallback_flash_address)
 {
     //note! t.c[0] MUST contain the byte-wide read command for the flash device used.
     //for the 25P64, and most other flash devices, this is 0x0b.

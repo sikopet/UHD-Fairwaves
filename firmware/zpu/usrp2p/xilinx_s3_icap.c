@@ -61,7 +61,7 @@ rd_icap(void)
 
 
 void
-icap_reload_fpga(uint32_t flash_address)
+icap_s3_reload_fpga(uint32_t flash_address)
 {
     union {
         uint32_t i;

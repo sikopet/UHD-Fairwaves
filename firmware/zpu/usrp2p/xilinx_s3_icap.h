@@ -25,7 +25,7 @@
  * Attempt to reload the fpga from \p flash_address.
  * Shouldn't return, but might.
  */
-void icap_reload_fpga(uint32_t flash_address);
+void icap_s3_reload_fpga(uint32_t flash_address);
 
 
 #endif /* INCLUDED_XILINX_S3_ICAP_H */

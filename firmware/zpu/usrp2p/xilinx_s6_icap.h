@@ -21,17 +21,11 @@
 
 #include <stdint.h>
 
-
-void wr_icap(uint16_t x);
-uint16_t rd_icap(void);
-
-//int icap_read_config_reg(int regno);
-
 /*
  * Attempt to reload the fpga from \p flash_address.
  * Shouldn't return, but might.
  */
-void icap_reload_fpga(uint32_t flash_address);
+void icap_s6_reload_fpga(uint32_t flash_address, uint32_t fallback_flash_address);
 
 
 #endif /* INCLUDED_XILINX_S3_ICAP_H */
