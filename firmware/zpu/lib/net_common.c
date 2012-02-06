@@ -39,7 +39,7 @@
 /***********************************************************************
  * Constants + Globals
  **********************************************************************/
-static const bool debug = false;
+static const bool debug = true;
 static const size_t out_buff_size = 2048;
 static const eth_mac_addr_t BCAST_MAC_ADDR = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 #define MAX_UDP_LISTENERS 10
@@ -435,7 +435,7 @@ handle_eth_packet(uint32_t *p, size_t nlines)
 {
   static size_t bcount = 0;
   if (debug) printf("===> %d\n", (int)bcount++);
-  if (debug) print_buffer(p, nlines);
+//  if (debug) print_buffer(p, nlines);
 
   padded_eth_hdr_t *eth_hdr = (padded_eth_hdr_t *)p;
 
