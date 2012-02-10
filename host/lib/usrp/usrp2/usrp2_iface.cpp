@@ -36,6 +36,8 @@
 #include <boost/filesystem.hpp>
 #include <algorithm>
 #include <iostream>
+#undef NDEBUG //evil hack for debug
+#include <cassert>
 
 using namespace uhd;
 using namespace uhd::usrp;
@@ -223,6 +225,7 @@ public:
         //setup the out data
         usrp2_ctrl_data_t out_data = usrp2_ctrl_data_t();
         out_data.id = htonl(USRP2_CTRL_ID_TRANSACT_ME_SOME_SPI_BRO);
+std::cerr <<"SPI: "<< std::hex << data <<" len: " << num_bits<<"\n"; //assert(0);
         out_data.data.spi_args.dev = htonl(which_slave);
         out_data.data.spi_args.miso_edge = spi_edge_to_otw[config.miso_edge];
         out_data.data.spi_args.mosi_edge = spi_edge_to_otw[config.mosi_edge];
