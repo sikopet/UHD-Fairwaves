@@ -1,5 +1,5 @@
 //
-// Copyright 2010-2012 Ettus Research LLC
+// Copyright 2012 Fairwaves
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,12 +16,10 @@
 //
 
 #include "validate_subdev_spec.hpp"
-#include "async_packet_handler.hpp"
 #include "../../transport/super_recv_packet_handler.hpp"
 #include "../../transport/super_send_packet_handler.hpp"
-#include "usrp2_impl.hpp"
-#include "usrp2_regs.hpp"
-#include "fw_common.h"
+#include "umtrx_impl.hpp"
+#include "umtrx_regs.hpp"
 #include <uhd/utils/log.hpp>
 #include <uhd/utils/msg.hpp>
 #include <uhd/utils/tasks.hpp>
@@ -32,7 +30,6 @@
 #include <boost/thread/thread.hpp>
 #include <boost/format.hpp>
 #include <boost/bind.hpp>
-#include <boost/asio.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/make_shared.hpp>
 #include <iostream>
@@ -55,13 +52,11 @@ static const size_t vrt_send_header_offset_words32 = 1;
  * - thread loop
  * - vrt packet handler states
  **********************************************************************/
-struct usrp2_impl::io_impl{
+struct umtrx_impl::io_impl {
 
     io_impl(void):
-        async_msg_fifo(1000/*messages deep*/),
-        tick_rate(1 /*non-zero default*/)
+        async_msg_fifo(100) //messages deep
     {
-        /* NOP */
     }
 
     ~io_impl(void){
@@ -101,7 +96,7 @@ struct usrp2_impl::io_impl{
  * - update flow control condition count
  * - put async message packets into queue
  **********************************************************************/
-void usrp2_impl::io_impl::recv_pirate_loop(
+void umtrx_impl::io_impl::recv_pirate_loop(
     zero_copy_if::sptr err_xport, size_t index
 ){
     set_thread_priority_safe();
@@ -125,7 +120,12 @@ void usrp2_impl::io_impl::recv_pirate_loop(
 
                 //fill in the async metadata
                 async_metadata_t metadata;
-                load_metadata_from_buff(uhd::ntohx<boost::uint32_t>, metadata, if_packet_info, vrt_hdr, tick_rate, index);
+                metadata.channel = index;
+                metadata.has_time_spec = if_packet_info.has_tsi and if_packet_info.has_tsf;
+                metadata.time_spec = time_spec_t(
+                    time_t(if_packet_info.tsi), size_t(if_packet_info.tsf), tick_rate
+                );
+                metadata.event_code = async_metadata_t::event_code_t(sph::get_context_code(vrt_hdr, if_packet_info));
 
                 //catch the flow control packets and react
                 if (metadata.event_code == 0){
@@ -136,7 +136,17 @@ void usrp2_impl::io_impl::recv_pirate_loop(
                 //else UHD_MSG(often) << "metadata.event_code " << metadata.event_code << std::endl;
                 async_msg_fifo.push_with_pop_on_full(metadata);
 
-                standard_async_msg_prints(metadata);
+                if (metadata.event_code &
+                    ( async_metadata_t::EVENT_CODE_UNDERFLOW
+                    | async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET)
+                ) UHD_MSG(fastpath) << "U";
+                else if (metadata.event_code &
+                    ( async_metadata_t::EVENT_CODE_SEQ_ERROR
+                    | async_metadata_t::EVENT_CODE_SEQ_ERROR_IN_BURST)
+                ) UHD_MSG(fastpath) << "S";
+                else if (metadata.event_code &
+                    async_metadata_t::EVENT_CODE_TIME_ERROR
+                ) UHD_MSG(fastpath) << "L";
             }
             else{
                 //TODO unknown received packet, may want to print error...
@@ -150,7 +160,7 @@ void usrp2_impl::io_impl::recv_pirate_loop(
 /***********************************************************************
  * Helper Functions
  **********************************************************************/
-void usrp2_impl::io_init(void){
+void umtrx_impl::io_init(void) {
     //create new io impl
     _io_impl = UHD_PIMPL_MAKE(io_impl, ());
 
@@ -174,13 +184,13 @@ void usrp2_impl::io_init(void){
     BOOST_FOREACH(const std::string &mb, _mbc.keys()){
         //spawn a new pirate to plunder the recv booty
         _io_impl->pirate_tasks.push_back(task::make(boost::bind(
-            &usrp2_impl::io_impl::recv_pirate_loop, _io_impl.get(),
+            &umtrx_impl::io_impl::recv_pirate_loop, _io_impl.get(),
             _mbc[mb].tx_dsp_xport, index++
         )));
     }
 }
-
-void usrp2_impl::update_tick_rate(const double rate){
+/*
+void umtrx_impl::update_tick_rate(const double rate){
     _io_impl->tick_rate = rate; //shadow for async msg
 
     //update the tick rate on all existing streamers -> thread safe
@@ -200,7 +210,7 @@ void usrp2_impl::update_tick_rate(const double rate){
     }
 }
 
-void usrp2_impl::update_rx_samp_rate(const std::string &mb, const size_t dsp, const double rate){
+void umtrx_impl::update_rx_samp_rate(const std::string &mb, const size_t dsp, const double rate){
     boost::shared_ptr<sph::recv_packet_streamer> my_streamer =
         boost::dynamic_pointer_cast<sph::recv_packet_streamer>(_mbc[mb].rx_streamers[dsp].lock());
     if (my_streamer.get() == NULL) return;
@@ -210,17 +220,15 @@ void usrp2_impl::update_rx_samp_rate(const std::string &mb, const size_t dsp, co
     my_streamer->set_scale_factor(adj);
 }
 
-void usrp2_impl::update_tx_samp_rate(const std::string &mb, const size_t dsp, const double rate){
+void umtrx_impl::update_tx_samp_rate(const std::string &mb, const size_t dsp, const double rate){
     boost::shared_ptr<sph::send_packet_streamer> my_streamer =
         boost::dynamic_pointer_cast<sph::send_packet_streamer>(_mbc[mb].tx_streamers[dsp].lock());
     if (my_streamer.get() == NULL) return;
 
     my_streamer->set_samp_rate(rate);
-    const double adj = _mbc[mb].tx_dsp->get_scaling_adjustment();
-    my_streamer->set_scale_factor(adj);
 }
-
-void usrp2_impl::update_rates(void){
+*/
+void umtrx_impl::update_rates(void){
     BOOST_FOREACH(const std::string &mb, _mbc.keys()){
         fs_path root = "/mboards/" + mb;
         _tree->access<double>(root / "tick_rate").update();
@@ -235,7 +243,7 @@ void usrp2_impl::update_rates(void){
     }
 }
 
-void usrp2_impl::update_rx_subdev_spec(const std::string &which_mb, const subdev_spec_t &spec){
+void umtrx_impl::update_rx_subdev_spec(const std::string &which_mb, const subdev_spec_t &spec){
     fs_path root = "/mboards/" + which_mb + "/dboards";
 
     //sanity checking
@@ -256,7 +264,7 @@ void usrp2_impl::update_rx_subdev_spec(const std::string &which_mb, const subdev
     BOOST_FOREACH(const std::string &mb, _mbc.keys()) nchan += _mbc[mb].rx_chan_occ;
 }
 
-void usrp2_impl::update_tx_subdev_spec(const std::string &which_mb, const subdev_spec_t &spec){
+void umtrx_impl::update_tx_subdev_spec(const std::string &which_mb, const subdev_spec_t &spec){
     fs_path root = "/mboards/" + which_mb + "/dboards";
 
     //sanity checking
@@ -275,7 +283,7 @@ void usrp2_impl::update_tx_subdev_spec(const std::string &which_mb, const subdev
 /***********************************************************************
  * Async Data
  **********************************************************************/
-bool usrp2_impl::recv_async_msg(
+bool umtrx_impl::recv_async_msg(
     async_metadata_t &async_metadata, double timeout
 ){
     boost::this_thread::disable_interruption di; //disable because the wait can throw
@@ -283,80 +291,24 @@ bool usrp2_impl::recv_async_msg(
 }
 
 /***********************************************************************
- * Stream destination programmer
- **********************************************************************/
-void usrp2_impl::program_stream_dest(
-    zero_copy_if::sptr &xport, const uhd::stream_args_t &args
-){
-    //perform an initial flush of transport
-    while (xport->get_recv_buff(0.0)){}
-
-    //program the stream command
-    usrp2_stream_ctrl_t stream_ctrl = usrp2_stream_ctrl_t();
-    stream_ctrl.sequence = uhd::htonx(boost::uint32_t(0 /* don't care seq num */));
-    stream_ctrl.vrt_hdr = uhd::htonx(boost::uint32_t(USRP2_INVALID_VRT_HEADER));
-
-    //user has provided an alternative address and port for destination
-    if (args.args.has_key("addr") and args.args.has_key("port")){
-        UHD_MSG(status) << boost::format(
-            "Programming streaming destination for custom address.\n"
-            "IPv4 Address: %s, UDP Port: %s\n"
-        ) % args.args["addr"] % args.args["port"] << std::endl;
-
-        asio::io_service io_service;
-        asio::ip::udp::resolver resolver(io_service);
-        asio::ip::udp::resolver::query query(asio::ip::udp::v4(), args.args["addr"], args.args["port"]);
-        asio::ip::udp::endpoint endpoint = *resolver.resolve(query);
-        stream_ctrl.ip_addr = uhd::htonx(boost::uint32_t(endpoint.address().to_v4().to_ulong()));
-        stream_ctrl.udp_port = uhd::htonx(boost::uint32_t(endpoint.port()));
-
-        for (size_t i = 0; i < 3; i++){
-            UHD_MSG(status) << "ARP attempt " << i << std::endl;
-            managed_send_buffer::sptr send_buff = xport->get_send_buff();
-            std::memcpy(send_buff->cast<void *>(), &stream_ctrl, sizeof(stream_ctrl));
-            send_buff->commit(sizeof(stream_ctrl));
-            send_buff.reset();
-            boost::this_thread::sleep(boost::posix_time::milliseconds(300));
-            managed_recv_buffer::sptr recv_buff = xport->get_recv_buff(0.0);
-            if (recv_buff and recv_buff->size() >= sizeof(boost::uint32_t)){
-                const boost::uint32_t result = uhd::ntohx(recv_buff->cast<const boost::uint32_t *>()[0]);
-                if (result == 0){
-                    UHD_MSG(status) << "Success! " << std::endl;
-                    return;
-                }
-            }
-        }
-        throw uhd::runtime_error("Device failed to ARP when programming alternative streaming destination.");
-    }
-
-    else{
-        //send the partial stream control without destination
-        managed_send_buffer::sptr send_buff = xport->get_send_buff();
-        std::memcpy(send_buff->cast<void *>(), &stream_ctrl, sizeof(stream_ctrl));
-        send_buff->commit(sizeof(stream_ctrl)/2);
-    }
-}
-
-/***********************************************************************
  * Receive streamer
  **********************************************************************/
-rx_streamer::sptr usrp2_impl::get_rx_stream(const uhd::stream_args_t &args_){
+rx_streamer::sptr umtrx_impl::get_rx_stream(const uhd::stream_args_t &args_){
     stream_args_t args = args_;
 
     //setup defaults for unspecified values
     args.otw_format = args.otw_format.empty()? "sc16" : args.otw_format;
     args.channels = args.channels.empty()? std::vector<size_t>(1, 0) : args.channels;
+    const unsigned sc8_scalar = unsigned(args.args.cast<double>("scalar", 0x400));
 
     //calculate packet size
     static const size_t hdr_size = 0
         + vrt::max_if_hdr_words32*sizeof(boost::uint32_t)
         + sizeof(vrt::if_packet_info_t().tlr) //forced to have trailer
         - sizeof(vrt::if_packet_info_t().cid) //no class id ever used
-        - sizeof(vrt::if_packet_info_t().tsi) //no int time ever used
     ;
     const size_t bpp = _mbc[_mbc.keys().front()].rx_dsp_xports[0]->get_recv_frame_size() - hdr_size;
-    const size_t bpi = convert::get_bytes_per_item(args.otw_format);
-    const size_t spp = unsigned(args.args.cast<double>("spp", bpp/bpi));
+    const size_t spp = bpp/convert::get_bytes_per_item(args.otw_format);
 
     //make the new streamer given the samples per packet
     boost::shared_ptr<sph::recv_packet_streamer> my_streamer = boost::make_shared<sph::recv_packet_streamer>(spp);
@@ -382,8 +334,8 @@ rx_streamer::sptr usrp2_impl::get_rx_stream(const uhd::stream_args_t &args_){
             if (chan < num_chan_so_far){
                 const size_t dsp = chan + _mbc[mb].rx_chan_occ - num_chan_so_far;
                 _mbc[mb].rx_dsps[dsp]->set_nsamps_per_packet(spp); //seems to be a good place to set this
-                _mbc[mb].rx_dsps[dsp]->setup(args);
-                this->program_stream_dest(_mbc[mb].rx_dsp_xports[dsp], args);
+                if (not args.args.has_key("noclear")) _mbc[mb].rx_dsps[dsp]->clear();
+                _mbc[mb].rx_dsps[dsp]->set_format(args.otw_format, sc8_scalar);
                 my_streamer->set_xport_chan_get_buff(chan_i, boost::bind(
                     &zero_copy_if::get_recv_buff, _mbc[mb].rx_dsp_xports[dsp], _1
                 ), true /*flush*/);
@@ -406,21 +358,22 @@ rx_streamer::sptr usrp2_impl::get_rx_stream(const uhd::stream_args_t &args_){
 /***********************************************************************
  * Transmit streamer
  **********************************************************************/
-tx_streamer::sptr usrp2_impl::get_tx_stream(const uhd::stream_args_t &args_){
+tx_streamer::sptr umtrx_impl::get_tx_stream(const uhd::stream_args_t &args_){
     stream_args_t args = args_;
 
     //setup defaults for unspecified values
     args.otw_format = args.otw_format.empty()? "sc16" : args.otw_format;
     args.channels = args.channels.empty()? std::vector<size_t>(1, 0) : args.channels;
 
+    if (args.otw_format != "sc16"){
+        throw uhd::value_error("USRP TX cannot handle requested wire format: " + args.otw_format);
+    }
+
     //calculate packet size
     static const size_t hdr_size = 0
-        + vrt_send_header_offset_words32*sizeof(boost::uint32_t)
         + vrt::max_if_hdr_words32*sizeof(boost::uint32_t)
-        + sizeof(vrt::if_packet_info_t().tlr) //forced to have trailer
+        + vrt_send_header_offset_words32*sizeof(boost::uint32_t)
         - sizeof(vrt::if_packet_info_t().cid) //no class id ever used
-        - sizeof(vrt::if_packet_info_t().sid) //no stream id ever used
-        - sizeof(vrt::if_packet_info_t().tsi) //no int time ever used
     ;
     const size_t bpp = _mbc[_mbc.keys().front()].tx_dsp_xport->get_send_frame_size() - hdr_size;
     const size_t spp = bpp/convert::get_bytes_per_item(args.otw_format);
@@ -450,11 +403,12 @@ tx_streamer::sptr usrp2_impl::get_tx_stream(const uhd::stream_args_t &args_){
             if (chan < num_chan_so_far){
                 const size_t dsp = chan + _mbc[mb].tx_chan_occ - num_chan_so_far;
                 if (not args.args.has_key("noclear")){
+                    _mbc[mb].tx_dsp->clear();
                     _io_impl->fc_mons[abs]->clear();
                 }
-                _mbc[mb].tx_dsp->setup(args);
+                if (args.args.has_key("underflow_policy")) _mbc[mb].tx_dsp->set_underflow_policy(args.args["underflow_policy"]);
                 my_streamer->set_xport_chan_get_buff(chan_i, boost::bind(
-                    &usrp2_impl::io_impl::get_send_buff, _io_impl.get(), abs, _1
+                    &umtrx_impl::io_impl::get_send_buff, _io_impl.get(), abs, _1
                 ));
                 _mbc[mb].tx_streamers[dsp] = my_streamer; //store weak pointer
                 break;
