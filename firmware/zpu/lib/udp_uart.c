@@ -20,6 +20,7 @@
 #include "net_common.h"
 #include "compiler.h"
 #include <stdbool.h>
+#include <nonstdio.h>
 
 /***********************************************************************
  * Constants
@@ -51,9 +52,11 @@ static void handle_uart_data_packet(
     struct socket_address src, struct socket_address dst,
     unsigned char *payload, int payload_len
 ){
+    puts("in handle_uart_data_packet()\n");
     //handle ICMP destination unreachable
     if (payload == NULL){
         const size_t which = src.port-_base_port;
+        printf("  which=%d\n", which);
         if (which >= MAX_NUM_UARTS) return;
         _states[which].dst.port = 0;
     }
@@ -61,6 +64,7 @@ static void handle_uart_data_packet(
     //handle a regular blocking UART write
     else{
         const size_t which = dst.port-_base_port;
+        printf("  which=%d", which);
         if (which >= MAX_NUM_UARTS) return;
         _states[which].dst = src;
         for (size_t i = 0; i < payload_len; i++){
@@ -73,6 +77,7 @@ static void handle_uart_data_packet(
  * Public init function
  **********************************************************************/
 void udp_uart_init(const uint16_t base_port){
+    puts("in udp_uart_init()\n");
     _base_port = base_port;
     for(size_t i = 0; i < MAX_NUM_UARTS; i++){
         _states[i].dst.port = 0; //reset to null port
@@ -105,6 +110,8 @@ void udp_uart_poll(void){
 
         //nothing in buffer, continue to next uart
         if (state->len == 0) continue;
+
+        printf("udp_uart_poll() i=%d len=%d\n", i, state->len);
 
         //send out a message if newline or forced flush
         if (newline || state->cyc++ > num_idle_cyc_b4_flush){
