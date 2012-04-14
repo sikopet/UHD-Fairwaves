@@ -22,6 +22,9 @@
 #include <memory_map.h>
 #include <spi_flash_private.h> //for READ_CMD
 
+#include <nonstdio.h>
+#include "mdelay.h"
+
 /* bit swap end-for-end, 8 bit */
 static inline unsigned char
 swap8(unsigned char x)
@@ -50,6 +53,9 @@ swap16(uint16_t x)
 static inline void
 wr_icap(uint16_t x)
 {
+    printf("wr_icap(0x%x)\n", x);
+//    printf("wr_icap(0x%x), swap=0x%x\n", x, swap16(x));
+//    mdelay(10);
     icap_regs->icap = swap16(x);
 }
 
@@ -86,6 +92,8 @@ uint16_t icap_s6_read_stat()
 void
 icap_s6_reload_fpga(uint32_t flash_address, uint32_t fallback_flash_address)
 {
+    uint16_t stat;
+
     //note! t.c[0] MUST contain the byte-wide read command for the flash device used.
     //for the 25P64, and most other flash devices, this is 0x0b.
     union {
@@ -98,6 +106,19 @@ icap_s6_reload_fpga(uint32_t flash_address, uint32_t fallback_flash_address)
     t.c[0] = FAST_READ_CMD;
     s.i = fallback_flash_address;
     s.c[0] = FAST_READ_CMD;
+
+    putstr("\nIn icap_s6_reload_fpga()!\n");
+    printf("flash_address=0x%x fallback_flash_address=0x%x\n", flash_address, fallback_flash_address);
+    printf("t3=%x t2=%x t1=%x t0=%x w1=%x w0=%x\n", t.c[3], t.c[2], t.c[1], t.c[0], t.w[1], t.w[0]);
+    printf("s3=%x s2=%x s1=%x s0=%x w1=%x w0=%x\n", s.c[3], s.c[2], s.c[1], s.c[0], s.w[1], s.w[0]);
+    mdelay(500);
+
+//    stat = icap_s6_read_stat();
+//    printf("stat=0x%x\n", stat);
+//    mdelay(500);
+//    stat = icap_s6_read_stat();
+//    printf("stat=0x%x\n", stat);
+//    mdelay(500);
 
     //TODO: look up the watchdog timer, ensure it won't fire too soon
 
