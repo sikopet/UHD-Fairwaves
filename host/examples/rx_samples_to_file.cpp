@@ -48,6 +48,7 @@ template<typename samp_type> void recv_to_file(
     uhd::rx_metadata_t md;
     std::vector<samp_type> buff(samps_per_buff);
     std::ofstream outfile(file.c_str(), std::ofstream::binary);
+    std::ofstream textdump((file+".text").c_str());
     bool overflow_message = true;
 
     //setup streaming
@@ -89,8 +90,11 @@ template<typename samp_type> void recv_to_file(
         num_total_samps += num_rx_samps;
 
         outfile.write((const char*)&buff.front(), num_rx_samps*sizeof(samp_type));
+	for (size_t i = 0; i < num_rx_samps; i++)
+	    textdump << buff[i].real() << "\t" <<buff[i].imag() << "\n";
+	textdump << "\n";
     }
-
+    textdump.close();
     outfile.close();
 }
 
