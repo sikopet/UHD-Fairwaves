@@ -69,6 +69,7 @@ static const size_t USRP2_SRAM_BYTES = size_t(1 << 20);
 static const boost::uint32_t USRP2_TX_ASYNC_SID = 2;
 static const boost::uint32_t USRP2_RX_SID_BASE = 3;
 static const std::string USRP2_EEPROM_MAP_KEY = "N100";
+static const std::string UMTRX_EEPROM_MAP_KEY = "UMTRX";
 
 /***********************************************************************
  * helpers
