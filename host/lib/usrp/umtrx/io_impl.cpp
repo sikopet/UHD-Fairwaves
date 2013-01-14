@@ -435,14 +435,19 @@ tx_streamer::sptr umtrx_impl::get_tx_stream(const uhd::stream_args_t &args_){
     my_streamer->set_converter(id);
 
     //bind callbacks for the handler
+    std::cout << "umtrx_impl::get_tx_stream() args.channels.size()=" << args.channels.size() << std::endl;
     for (size_t chan_i = 0; chan_i < args.channels.size(); chan_i++){
         const size_t chan = args.channels[chan_i];
         size_t num_chan_so_far = 0;
         size_t abs = 0;
         BOOST_FOREACH(const std::string &mb, _mbc.keys()){
             num_chan_so_far += _mbc[mb].tx_chan_occ;
+            std::cout << "umtrx_impl::get_tx_stream() mb=" << mb << std::endl;
             if (chan < num_chan_so_far){
                 const size_t dsp = chan + _mbc[mb].tx_chan_occ - num_chan_so_far;
+//                const size_t dsp=1;
+//                abs=1;
+                std::cout << "umtrx_impl::get_tx_stream() chan=" << chan << " dsp=" << dsp << " abs=" << abs << std::endl;
                 if (not args.args.has_key("noclear")){
                     _mbc[mb].tx_dsps[dsp]->clear();
                     _io_impl->fc_mons[abs+dsp]->clear();
