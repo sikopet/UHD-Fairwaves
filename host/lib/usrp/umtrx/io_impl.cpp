@@ -67,6 +67,7 @@ struct umtrx_impl::io_impl {
     }
 
     managed_send_buffer::sptr get_send_buff(size_t chan, double timeout){
+        std::cout << "get_send_buff(chan=" << chan << " timeout=" << timeout << ")" << std::endl;
         flow_control_monitor &fc_mon = *fc_mons[chan];
 
         //wait on flow control w/ timeout
@@ -129,6 +130,14 @@ void umtrx_impl::io_impl::recv_pirate_loop(
                     time_t(if_packet_info.tsi), size_t(if_packet_info.tsf), tick_rate
                 );
                 metadata.event_code = async_metadata_t::event_code_t(sph::get_context_code(vrt_hdr, if_packet_info));
+
+                std::cout << "recv_pirate_loop()"
+                          << " channel=" << index << " event_code=" << metadata.event_code
+//                          << " start_of_burst=" << if_packet_info.sob << " end_of_burst=" << if_packet_info.eob
+                          << " seq#=" << if_packet_info.packet_count;
+                if (if_packet_info.has_tsi and if_packet_info.has_tsf)
+                    std::cout << " secs=" << if_packet_info.tsi << " ticks=" << if_packet_info.tsf;
+                std::cout << std::endl;
 
                 //catch the flow control packets and react
                 if (metadata.event_code == 0){
