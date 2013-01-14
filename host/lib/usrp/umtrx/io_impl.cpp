@@ -142,14 +142,17 @@ void umtrx_impl::io_impl::recv_pirate_loop(
                 if (metadata.event_code &
                     ( async_metadata_t::EVENT_CODE_UNDERFLOW
                     | async_metadata_t::EVENT_CODE_UNDERFLOW_IN_PACKET)
-                ) UHD_MSG(fastpath) << "U";
+//                ) UHD_MSG(fastpath) << "U";
+                ) std::cout << "U" << metadata.channel;
                 else if (metadata.event_code &
                     ( async_metadata_t::EVENT_CODE_SEQ_ERROR
                     | async_metadata_t::EVENT_CODE_SEQ_ERROR_IN_BURST)
-                ) UHD_MSG(fastpath) << "S";
+//                ) UHD_MSG(fastpath) << "S";
+                ) std::cout << "S" << metadata.channel;
                 else if (metadata.event_code &
                     async_metadata_t::EVENT_CODE_TIME_ERROR
-                ) UHD_MSG(fastpath) << "L";
+//                ) UHD_MSG(fastpath) << "L";
+                ) std::cout << "L" << metadata.channel;
             }
             else{
                 //TODO unknown received packet, may want to print error...
