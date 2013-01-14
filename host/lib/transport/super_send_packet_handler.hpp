@@ -222,6 +222,13 @@ private:
         if_packet_info.num_payload_words32 = (if_packet_info.num_payload_bytes + 3/*round up*/)/sizeof(boost::uint32_t);
         if_packet_info.packet_count = _next_packet_seq;
 
+        std::cout << "send_one_packet()"
+                  << " start_of_burst=" << if_packet_info.sob << " end_of_burst=" << if_packet_info.eob
+                  << " seq#=" << if_packet_info.packet_count;
+        if (if_packet_info.has_tsi)
+            std::cout << " secs=" << if_packet_info.tsi << " ticks=" << if_packet_info.tsf;
+        std::cout << std::endl;
+
         size_t buff_index = 0;
         BOOST_FOREACH(xport_chan_props_type &props, _props){
             managed_send_buffer::sptr buff = props.get_buff(timeout);
