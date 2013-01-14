@@ -58,18 +58,22 @@ public:
     ):
         _iface(iface), _dsp_base(dsp_base), _ctrl_base(ctrl_base), _sid(sid)
     {
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::tx_dsp_core_200_impl() dsp_base=" << _dsp_base
+                  << " ctrl_base=" << _ctrl_base << std::endl;
         //init the tx control registers
         this->clear();
         this->set_underflow_policy("next_packet");
     }
 
     void clear(void){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::clear()" << std::endl;
         _iface->poke32(REG_TX_CTRL_CLEAR_STATE, 1); //reset
         _iface->poke32(REG_TX_CTRL_NUM_CHAN, 0);    //1 channel
         _iface->poke32(REG_TX_CTRL_REPORT_SID, _sid);
     }
 
     void set_underflow_policy(const std::string &policy){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::set_underflow_policy(" << "policy=" << policy << ")" << std::endl;
         if (policy == "next_packet"){
             _iface->poke32(REG_TX_CTRL_POLICY, FLAG_TX_CTRL_POLICY_NEXT_PACKET);
         }
@@ -80,15 +84,18 @@ public:
     }
 
     void set_tick_rate(const double rate){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::set_tick_rate(" << "rate=" << rate << ")" << std::endl;
         _tick_rate = rate;
     }
 
     void set_link_rate(const double rate){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::set_link_rate(" << "rate=" << rate << ")" << std::endl;
         //_link_rate = rate/sizeof(boost::uint32_t); //in samps/s
         _link_rate = rate/sizeof(boost::uint16_t); //in samps/s (allows for 8sc)
     }
 
     uhd::meta_range_t get_host_rates(void){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::get_host_rates()" << std::endl;
         meta_range_t range;
         for (int rate = 512; rate > 256; rate -= 4){
             range.push_back(range_t(_tick_rate/rate));
@@ -103,6 +110,7 @@ public:
     }
 
     double set_host_rate(const double rate){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::set_host_rate(" << "rate=" << rate << ")" << std::endl;
         const size_t interp_rate = boost::math::iround(_tick_rate/this->get_host_rates().clip(rate, true));
         size_t interp = interp_rate;
 
@@ -129,6 +137,7 @@ public:
     }
 
     double set_freq(const double freq_){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::set_freq(" << "freq=" << freq_ << ")" << std::endl;
         //correct for outside of rate (wrap around)
         double freq = std::fmod(freq_, _tick_rate);
         if (std::abs(freq) > _tick_rate/2.0)
@@ -148,10 +157,13 @@ public:
     }
 
     uhd::meta_range_t get_freq_range(void){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::get_freq_range()" << std::endl;
         return uhd::meta_range_t(-_tick_rate/2, +_tick_rate/2, _tick_rate/std::pow(2.0, 32));
     }
 
     void set_updates(const size_t cycles_per_up, const size_t packets_per_up){
+        std::cout << "tx_dsp_core_200_impl" << " sid=" << _sid << " ::set_updates(" << "cycles_per_up=" << cycles_per_up
+                  << " packets_per_up=" << packets_per_up << ")" << std::endl;
         _iface->poke32(REG_TX_CTRL_CYCLES_PER_UP,  (cycles_per_up  == 0)? 0 : (FLAG_TX_CTRL_UP_ENB | cycles_per_up));
         _iface->poke32(REG_TX_CTRL_PACKETS_PER_UP, (packets_per_up == 0)? 0 : (FLAG_TX_CTRL_UP_ENB | packets_per_up));
     }
