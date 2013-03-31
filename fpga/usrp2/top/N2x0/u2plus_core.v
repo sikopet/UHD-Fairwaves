@@ -358,8 +358,8 @@ module u2plus_core
       .sf_dat_o(sf_dat_o),.sf_adr_o(sf_adr),.sf_sel_o(sf_sel),.sf_we_o(sf_we),.sf_cyc_o(sf_cyc),.sf_stb_o(sf_stb),
       .sf_dat_i(sf_dat_i),.sf_ack_i(sf_ack),.sf_err_i(0),.sf_rty_i(0));
 
-   // Unused Slaves 9, b, c
-   assign s9_ack = 0;   assign sb_ack = 0;   assign sc_ack = 0;
+   // Unused Slaves b, c
+   assign sb_ack = 0;   assign sc_ack = 0;
    
    // ////////////////////////////////////////////////////////////////////////////////////////
    // Reset Controller
