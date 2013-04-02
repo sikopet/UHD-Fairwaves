@@ -682,7 +682,7 @@ module u2plus_core
    assign irq= {{8'b0},
 		{uart_tx_int[3:0], uart_rx_int[3:0]},
 		{4'b0, clk_status, 3'b0},
-		{2'b0, PHY_INTn,aux_i2c_int, i2c_int,spi_int,gpsdo_int,1'b0}};
+		{2'b0,aux_i2c_int, PHY_INTn, i2c_int,spi_int,gpsdo_int,1'b0}};
    
    pic pic(.clk_i(wb_clk),.rst_i(wb_rst),.cyc_i(s8_cyc),.stb_i(s8_stb),.adr_i(s8_adr[4:2]),
 	   .we_i(s8_we),.dat_i(s8_dat_o),.dat_o(s8_dat_i),.ack_o(s8_ack),.int_o(proc_int),
