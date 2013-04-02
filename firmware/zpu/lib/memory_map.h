@@ -403,6 +403,7 @@ typedef struct {
 #define	IRQ_SPI		2
 #define	IRQ_I2C		3
 #define	IRQ_PHY		4	// ethernet PHY
+#define	IRQ_I2C_AUX	5
 #define	IRQ_UNDERRUN	5
 #define	IRQ_OVERRUN	6
 #define	IRQ_PPS		7	// pulse per second
@@ -420,6 +421,7 @@ typedef struct {
 #define PIC_SPI_INT       IRQ_TO_MASK(IRQ_SPI)
 #define PIC_I2C_INT       IRQ_TO_MASK(IRQ_I2C)
 #define PIC_PHY_INT       IRQ_TO_MASK(IRQ_PHY)
+#define PIC_I2C_AUX_INT   IRQ_TO_MASK(IRQ_I2C_AUX)
 #define PIC_UNDERRUN_INT  IRQ_TO_MASK(IRQ_UNDERRUN)
 #define PIC_OVERRUN_INT   IRQ_TO_MASK(IRQ_OVERRUN)
 #define PIC_PPS_INT   	  IRQ_TO_MASK(IRQ_PPS)
