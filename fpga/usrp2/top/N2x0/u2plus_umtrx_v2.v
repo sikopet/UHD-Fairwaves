@@ -336,7 +336,7 @@ wire DivSw1, DivSw2;
    assign 	{SCLK_DAC,MISO_DAC} = ~SEN_DAC ? {sclk,mosi} : 2'B0;
    assign 	{SCLK1,MOSI1}       = ~SEN1    ? {sclk,mosi} : 2'B0;
    assign 	{SCLK2,MOSI2}       = ~SEN2    ? {sclk,mosi} : 2'B0;
-   assign 	{AUX_SCLK,AUX_SDAT} = ~(AUX_SEN1 | AUX_SEN2) ? {sclk,mosi} : 2'B0;
+   assign 	{AUX_SCLK,AUX_SDAT} = (~AUX_SEN1 | ~AUX_SEN2) ? {sclk,mosi} : 2'B0;
    
    assign 	miso 	= (~SEN1 & MISO1) | (~SEN2 & MISO2) ;
 `endif // !`ifndef UMTRX
